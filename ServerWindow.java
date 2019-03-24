@@ -7,6 +7,8 @@ import java.util.concurrent.TimeUnit;
 
 import javax.swing.*;
 import javax.swing.border.*;
+import javax.swing.table.*;
+
 import java.awt.*;
 
 import comp1206.sushi.common.*;
@@ -16,12 +18,13 @@ import comp1206.sushi.server.ServerInterface.UnableToDeleteException;
  * Provides the Sushi Server user interface
  *
  */
-public class ServerWindow extends JFrame implements UpdateListener 
+public class ServerWindow extends JFrame implements UpdateListener
 {
 
 	private static final long serialVersionUID = -4661566573959270000L;
 	private ServerInterface server;
 	private JPanel contentPane;
+	private ArrayList<GenericPanel> panels;
 	
 	/**
 	 * Create a new server window
@@ -33,6 +36,7 @@ public class ServerWindow extends JFrame implements UpdateListener
 		this.server = server;
 		this.setTitle(server.getRestaurantName() + " Server");
 		server.addUpdateListener(this);
+		this.panels = new ArrayList<GenericPanel>();
 		
 		//Display window
 		setSize(800,600);
@@ -48,41 +52,25 @@ public class ServerWindow extends JFrame implements UpdateListener
 		//tabbed pane
 		JTabbedPane tabbedPane = new JTabbedPane();
 		
-		//testing dummy data
-		Object[][] orderData = {{"test", 12, 43, "Pending"}, {"test2", 122, 433, "Ready"}};
-		Object[][] dishData = {{"test", "test", 43, 10, 1, 12}, 
-				{"test2", "test2", 122, 433, 123, 14}};
-		Object[][] ingredientData = {{"test", "kg", "test", 10, 1}, 
-				{"test2", "kg", "test2", 433, 123}};
-		Object[][] supplierData = {{"test", "test", 10}, 
-				{"test2", "test2", 433}};
-		Object[][] staffData = {{"test", "test", "Tired"}, 
-				{"test2", "test2", "Exhausted"}};
-		Object[][] droneData = {{"test", 10, "Flying"}, 
-				{"test2", 23, "Idle"}};
-		Object[][] userData = {{"test", "test", "test"}, 
-				{"test2", "test2", "test2"}};
-		Object[][] postcodeData = {{"test", "0/0", 3}, 
-				{"test2", "1/1", 4}};
+		//create panels
+		panels.add(new OrderPanel());
+		panels.add(new DishPanel());
+		panels.add(new IngredientPanel());
+		panels.add(new SupplierPanel());
+		panels.add(new StaffPanel());
+		panels.add(new DronePanel());
+		panels.add(new UserPanel());
+		panels.add(new PostcodePanel());
 		
-		
-		GenericPanel orderPanel = new OrderPanel(orderData);
-		GenericPanel dishPanel = new DishPanel(dishData);
-		GenericPanel ingredientPanel = new IngredientPanel(ingredientData);
-		GenericPanel supplierPanel = new SupplierPanel(supplierData);
-		GenericPanel staffPanel = new StaffPanel(staffData);
-		GenericPanel dronePanel = new DronePanel(droneData);
-		GenericPanel userPanel = new UserPanel(userData);
-		GenericPanel postcodePanel = new PostcodePanel(postcodeData);
-		
-		tabbedPane.add("Orders", orderPanel);
-		tabbedPane.add("Dishes", dishPanel);
-		tabbedPane.add("Ingredients", ingredientPanel);
-		tabbedPane.add("Suppliers", supplierPanel);
-		tabbedPane.add("Staff", staffPanel);
-		tabbedPane.add("Drones", dronePanel);
-		tabbedPane.add("Users", userPanel);
-		tabbedPane.add("Postcodes", postcodePanel);
+		//add panels to tabbed pane
+		tabbedPane.add("Orders", panels.get(0));
+		tabbedPane.add("Dishes", panels.get(1));
+		tabbedPane.add("Ingredients", panels.get(2));
+		tabbedPane.add("Suppliers", panels.get(3));
+		tabbedPane.add("Staff", panels.get(4));
+		tabbedPane.add("Drones", panels.get(5));
+		tabbedPane.add("Users", panels.get(6));
+		tabbedPane.add("Postcodes", panels.get(7));
 		
 		this.contentPane.add(tabbedPane);
 		setVisible(true);
@@ -104,6 +92,7 @@ public class ServerWindow extends JFrame implements UpdateListener
 		protected ArrayList<JButton> buttons;
 		protected JPanel buttonPanel;
 		
+		//constructor, "sets stage" for inheriting classes' constructors
 		public GenericPanel(Object[][] data)
 		{
 			super();
@@ -118,28 +107,46 @@ public class ServerWindow extends JFrame implements UpdateListener
 			this.buttons = new ArrayList<JButton>();
 		}
 		
-		protected void tableGen(String[] header)
+		public GenericPanel()
 		{
-			this.table = new JTable(this.data, header);
+			super();
+			
+			this.setLayout(new BorderLayout());
+			
+			this.scrollPane = new JScrollPane();
+			
+			this.buttonPanel = new JPanel();
+			this.buttonPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
+			this.buttons = new ArrayList<JButton>();
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			//to be overridden
+		}
+		
+		protected void tableGen(GenericTableModel m)
+		{
+			this.table = new JTable(m);
 			this.table.setShowGrid(false);
 			this.table.setDefaultEditor(Object.class, null);
 			this.table.setFillsViewportHeight(true);
 		}
 		
+		//method to add buttons to bottom of panel
 		protected void addButtons(String[] names)
 		{
 			this.buttonPanel.setLayout(new GridLayout(0, names.length, 10, 10));
-			
-			for (String name : names)
+
+			for (int i = 0; i < names.length; i++)
 			{
-				this.buttons.add(new JButton(name));
-			}
-			for (JButton button : this.buttons)
-			{
-				this.buttonPanel.add(button);
+				this.buttons.add(new JButton(names[i]));
+				this.buttonPanel.add(this.buttons.get(i));
 			}
 		}
 		
+		//initialises all (or most) gui components
 		protected void guiInit()
 		{
 			this.scrollPane.getViewport().add(this.table);
@@ -147,28 +154,140 @@ public class ServerWindow extends JFrame implements UpdateListener
 			
 			this.add(this.buttonPanel, BorderLayout.SOUTH);
 		}
+		
+		//table model
+		protected class GenericTableModel extends AbstractTableModel
+		{
+			protected String[] columnHeaders;
+			protected ArrayList<Object[]> data = new ArrayList<Object[]>();
+			
+			public int getColumnCount() 
+			{
+				return this.columnHeaders.length;
+			}
+			
+			public String getColumnName(int i)
+			{
+				return this.columnHeaders[i];
+			}
+			public int getRowCount()
+			{
+				return this.data.size();
+			}
+
+			public Object getValueAt(int i, int j) 
+			{
+				return this.data.get(i)[j];
+			}
+			
+			public void setValueAt(Object o, int i, int j)
+			{
+				this.data.get(i)[j] = o;
+				this.fireTableCellUpdated(i, j);
+			}
+			
+			public boolean isCellEditable(int i, int j)
+			{
+				return false;
+			}
+		}
 	}
 	
 	private class OrderPanel extends GenericPanel
 	{
-		public OrderPanel(Object[][] data)
+		public OrderPanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Complete", "Delete"});
 			
-			this.tableGen(new String[] {"Name", "Distance", "Cost", "Status"});
+			this.tableGen(new OrderTableModel());
 			this.guiInit();
+			
+			//DELETE function
+			this.buttons.get(1).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						server.removeOrder(server.getOrders().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+							ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new OrderTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+		
+		//populate table with orders from MockServer
+		protected class OrderTableModel extends GenericTableModel
+		{
+			public OrderTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Distance", "Cost", "Status"};
+				for (Order order : ServerWindow.this.server.getOrders())
+				{
+					this.data.add(new Object[] {order.getName(), server.getOrderDistance(order), 
+							server.getOrderCost(order), server.getOrderStatus(order)});
+				}
+			}
 		}
 	}
 	
+	// TODO need to implement get recipe/set recipe
 	private class DishPanel extends GenericPanel
 	{
-		public DishPanel(Object[][] data)
+		public DishPanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Add", "Edit", "Delete"});
 			
-			this.tableGen(new String[] {"Name", "Description", "Price", "Restock Amount", "Restock Threshold", "Stock"});
+			this.tableGen(new DishTableModel());
 			this.guiInit();
 			
 			//example of how to implement edit
@@ -180,78 +299,622 @@ public class ServerWindow extends JFrame implements UpdateListener
                     null,
                     new String[] {"test", "test2"},
                     "ham"); });
+			
+			//DELETE function
+			this.buttons.get(2).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						server.removeDish(server.getDishes().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+							ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new DishTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+		
+		//populate table with orders from MockServer
+		protected class DishTableModel extends GenericTableModel
+		{
+			public DishTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Description", "Price", "Restock Amount", 
+						"Restock Threshold", "Stock"};
+				for (Dish dish : ServerWindow.this.server.getDishes())
+				{
+					this.data.add(new Object[] {dish.getName(), dish.getDescription(), 
+							dish.getPrice(), dish.getRestockAmount(), dish.getRestockThreshold(), 
+							server.getDishStockLevels().get(dish)});
+				}
+			}
 		}
 	}
 	
 	private class IngredientPanel extends GenericPanel
 	{
-		public IngredientPanel(Object[][] data)
+		public IngredientPanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Add", "Edit", "Delete"});
 			
-			this.tableGen(new String[] {"Name", "Unit", "Supplier", "Restock Amount", "Restock Threshold"});
+			this.tableGen(new IngredientTableModel());
 			this.guiInit();
+			
+			//DELETE function
+			this.buttons.get(2).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						//check if ingredient in use by dish
+						for (Dish dish : server.getDishes())
+						{
+							if (dish.getRecipe().containsKey(server.getIngredients().get(r[index])))
+							{
+								throw new UnableToDeleteException("Ingredient " + 
+										server.getIngredients().get(r[index]).getName() + " used by Dish " +
+										dish.getName() + ".");
+							}
+						}
+						
+						server.removeIngredient(server.getIngredients().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+							ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new IngredientTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+				
+		//populate table with orders from MockServer
+		protected class IngredientTableModel extends GenericTableModel
+		{
+			public IngredientTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Unit", "Supplier", "Restock Amount",
+						"Restock Threshold", "Stock"};
+				for (Ingredient ingredient : ServerWindow.this.server.getIngredients())
+				{
+					this.data.add(new Object[] {ingredient.getName(), ingredient.getUnit(),
+							ingredient.getSupplier().getName(), ingredient.getRestockAmount(), 
+							ingredient.getRestockThreshold(), server.getIngredientStockLevels().get(ingredient)});
+				}
+			}
 		}
 	}
 	
 	private class SupplierPanel extends GenericPanel
 	{
-		public SupplierPanel(Object[][] data)
+		public SupplierPanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Add", "Edit", "Delete"});
 			
-			this.tableGen(new String[] {"Name", "Postcode", "Distance"});
+			this.tableGen(new SupplierTableModel());
 			this.guiInit();
+			
+			//DELETE function
+			this.buttons.get(2).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						server.removeSupplier(server.getSuppliers().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+							ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new SupplierTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+
+		//populate table with orders from MockServer
+		protected class SupplierTableModel extends GenericTableModel
+		{
+			public SupplierTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Postcode", "Distance"};
+				for (Supplier supplier : ServerWindow.this.server.getSuppliers())
+				{
+					this.data.add(new Object[] {supplier.getName(), supplier.getPostcode(),
+							server.getSupplierDistance(supplier)});
+				}
+			}
 		}
 	}
 	
 	private class StaffPanel extends GenericPanel
 	{
-		public StaffPanel(Object[][] data)
+		public StaffPanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Add", "Delete"});
 			
-			this.tableGen(new String[] {"Name", "Status", "Fatigue"});
+			this.tableGen(new StaffTableModel());
 			this.guiInit();
+			
+			//DELETE function
+			this.buttons.get(1).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						server.removeStaff(server.getStaff().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+							ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new StaffTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+				
+		//populate table with orders from MockServer
+		protected class StaffTableModel extends GenericTableModel
+		{
+			public StaffTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Status", "Fatigue"};
+				for (Staff staff : ServerWindow.this.server.getStaff())
+				{
+					this.data.add(new Object[] {staff.getName(), server.getStaffStatus(staff), staff.getFatigue()});
+				}
+			}
 		}
 	}
 	
 	private class DronePanel extends GenericPanel
 	{
-		public DronePanel(Object[][] data)
+		public DronePanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Add", "Delete"});
 			
-			this.tableGen(new String[] {"Name", "Speed", "Status"});
+			this.tableGen(new DroneTableModel());
 			this.guiInit();
+			
+			//DELETE function
+			this.buttons.get(1).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						server.removeDrone(server.getDrones().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+							ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new DroneTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+				
+		//populate table with orders from MockServer
+		protected class DroneTableModel extends GenericTableModel
+		{
+			public DroneTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Source", "Destination", "Progress", "Speed", "Status"};
+				for (Drone drone : ServerWindow.this.server.getDrones())
+				{
+					this.data.add(new Object[] {drone.getName(), server.getDroneSource(drone),
+							server.getDroneDestination(drone), server.getDroneProgress(drone),
+							server.getDroneSpeed(drone), server.getDroneStatus(drone)});
+				}
+			}
 		}
 	}
 	
 	private class UserPanel extends GenericPanel
 	{
-		public UserPanel(Object[][] data)
+		public UserPanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Delete"});
 			
-			this.tableGen(new String[] {"Name", "Address", "Postcode"});
+			this.tableGen(new UserTableModel());
 			this.guiInit();
+			
+			//DELETE function
+			this.buttons.get(0).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						server.removeUser(server.getUsers().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+							ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new UserTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+				
+		//populate table with orders from MockServer
+		protected class UserTableModel extends GenericTableModel
+		{
+			public UserTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Distance", "Postcode"};
+				for (User user : ServerWindow.this.server.getUsers())
+				{
+					this.data.add(new Object[] {user.getName(), user.getDistance(), user.getPostcode()});
+				}
+			}
 		}
 	}
 	
 	private class PostcodePanel extends GenericPanel
 	{
-		public PostcodePanel(Object[][] data)
+		public PostcodePanel()
 		{
-			super(data);
+			super();
 			this.addButtons(new String[] {"Add", "Delete"});
 			
-			this.tableGen(new String[] {"Name", "Latitude/Longitude", "Distance"});
+			this.tableGen(new PostcodeTableModel());
 			this.guiInit();
+			
+			//DELETE function
+			this.buttons.get(1).addActionListener(e -> 
+			{ 
+				try
+				{
+					if (this.table.getSelectedRow() == -1)
+					{
+						throw new ArrayIndexOutOfBoundsException();
+					}
+					
+					int r[] = this.table.getSelectedRows();
+					int index = 0;
+					while (index < r.length)
+					{
+						//check if postcode in use by supplier
+						for (Supplier supplier : server.getSuppliers())
+						{
+							if (supplier.getPostcode() == server.getPostcodes().get(r[index]))
+							{
+								throw new UnableToDeleteException("Postcode " + 
+										server.getPostcodes().get(r[index]).getName() + " used by Supplier " +
+										supplier.getName() + ".");
+							}
+						}
+						
+						server.removePostcode(server.getPostcodes().get(r[index++]));
+						
+						for (int i = index; i < r.length; i++)
+						{
+							r[i] -= 1;
+						}
+					}
+					ServerWindow.this.refreshAll();
+				}
+				catch (UnableToDeleteException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    ex.getMessage(),
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+				catch (ArrayIndexOutOfBoundsException ex)
+				{
+					JOptionPane.showMessageDialog(ServerWindow.this,
+						    "No entry selected.",
+						    "Delete Error",
+						    JOptionPane.ERROR_MESSAGE);
+				}
+			});
+		}
+		
+		//refresh table contents
+		protected void refresh()
+		{
+			try
+			{
+				int[] r = this.table.getSelectedRows();
+				this.table.setModel(new PostcodeTableModel());
+				if (r.length > 0)
+				{
+					for (int i : r)
+					{
+						this.table.addRowSelectionInterval(i, i);
+					}
+				}
+			}
+			catch (IllegalArgumentException ex)
+			{
+				
+			}
+		}
+				
+		//populate table with orders from MockServer
+		protected class PostcodeTableModel extends GenericTableModel
+		{
+			public PostcodeTableModel()
+			{
+				this.columnHeaders = new String[] {"Name", "Latitude / Longitude", "Distance"};
+				for (Postcode postcode : ServerWindow.this.server.getPostcodes())
+				{
+					this.data.add(new Object[] {postcode.getName(), 
+							(String) (postcode.getLatLong().get("lat") + " / " + postcode.getLatLong().get("lon")), 
+							postcode.getDistance()});
+				}
+			}
 		}
 	}
 	
@@ -271,7 +934,10 @@ public class ServerWindow extends JFrame implements UpdateListener
 	 */
 	public void refreshAll() 
 	{
-		
+		for (GenericPanel panel : this.panels)
+		{
+			panel.refresh();
+		}
 	}
 	
 	@Override
