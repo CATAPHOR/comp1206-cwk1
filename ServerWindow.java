@@ -284,6 +284,8 @@ public class ServerWindow extends JFrame implements UpdateListener
 	
 	private class DishPanel extends GenericPanel
 	{
+		JTable recipeTable;
+		
 		public DishPanel()
 		{
 			super();
@@ -369,7 +371,7 @@ public class ServerWindow extends JFrame implements UpdateListener
 					
 					recipeOpen.addActionListener(f ->
 					{
-						JTable recipeTable = new JTable(new RecipeTableModel(dish));
+						recipeTable = new JTable(new RecipeTableModel(dish));
 						recipeTable.setShowGrid(false);
 						recipeTable.setFillsViewportHeight(true);
 						JScrollPane recipeScroll = new JScrollPane();
