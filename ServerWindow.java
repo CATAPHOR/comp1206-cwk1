@@ -283,9 +283,7 @@ public class ServerWindow extends JFrame implements UpdateListener
 	}
 	
 	private class DishPanel extends GenericPanel
-	{
-		JTable recipeTable;
-		
+	{	
 		public DishPanel()
 		{
 			super();
@@ -371,7 +369,7 @@ public class ServerWindow extends JFrame implements UpdateListener
 					
 					recipeOpen.addActionListener(f ->
 					{
-						recipeTable = new JTable(new RecipeTableModel(dish));
+						JTable recipeTable = new JTable(new RecipeTableModel(dish));
 						recipeTable.setShowGrid(false);
 						recipeTable.setFillsViewportHeight(true);
 						JScrollPane recipeScroll = new JScrollPane();
@@ -458,55 +456,59 @@ public class ServerWindow extends JFrame implements UpdateListener
 						//EDIT function
 						recipebuttons.get(1).addActionListener(g -> 
 						{
-							JTextField number = new JTextField(
-									recipeTable.getValueAt(recipeTable.getSelectedRow(), 1).toString());
-							Object[] message = {
-									"Number:", number
-							};
-							
-							int option = JOptionPane.showConfirmDialog(null, message, "Number of ingredient " + 
-									recipeTable.getValueAt(recipeTable.getSelectedRow(), 0).toString()
-									+ ":", JOptionPane.OK_CANCEL_OPTION);
-							if (option == JOptionPane.OK_OPTION)
+							if (recipeTable.getSelectedRows().length > 0)
 							{
-								try
+								JTextField number = new JTextField(
+										recipeTable.getValueAt(recipeTable.getSelectedRow(), 1).toString());
+								Object[] message = {
+										"Number:", number
+								};
+								
+								int option = JOptionPane.showConfirmDialog(null, message, "Number of ingredient " + 
+										recipeTable.getValueAt(recipeTable.getSelectedRow(), 0).toString()
+										+ ":", JOptionPane.OK_CANCEL_OPTION);
+								if (option == JOptionPane.OK_OPTION)
 								{
-									int num = Integer.parseInt(number.getText());
-									
-									if (num <= 0)
+									try
 									{
-										throw new Exception("Numerical values must be above 0.");
-									}
-									
-									Ingredient ingredient = null;
-									
-									for (Ingredient i : server.getRecipe(dish).keySet())
-									{
-										if (i.getName().equals(recipeTable.getValueAt(recipeTable.getSelectedRow(), 0)))
+										int num = Integer.parseInt(number.getText());
+										
+										if (num <= 0)
 										{
-											ingredient = i;
+											throw new Exception("Numerical values must be above 0.");
 										}
+										
+										Ingredient ingredient = null;
+										
+										for (Ingredient i : server.getRecipe(dish).keySet())
+										{
+											if (i.getName().equals(recipeTable.getValueAt(recipeTable.getSelectedRow(), 0)))
+											{
+												ingredient = i;
+											}
+										}
+										
+										server.getRecipe(dish).put(ingredient, num);
+										recipeTable.setModel(new RecipeTableModel(dish));
 									}
-									
-									server.getRecipe(dish).put(ingredient, num);
-									recipeTable.setModel(new RecipeTableModel(dish));
-								}
-								catch (NumberFormatException ex)
-						    	{
-						    		JOptionPane.showMessageDialog(null,
-											"Number field must hold valid numerical value.",
-										    "Edit Error",
-										    JOptionPane.ERROR_MESSAGE);
-						    	}
-								catch (Exception ex)
-								{
-									JOptionPane.showMessageDialog(null,
-										    ex.getMessage(),
-										    "Edit Error",
-										    JOptionPane.ERROR_MESSAGE);
+									catch (NumberFormatException ex)
+							    	{
+							    		JOptionPane.showMessageDialog(null,
+												"Number field must hold valid numerical value.",
+											    "Edit Error",
+											    JOptionPane.ERROR_MESSAGE);
+							    	}
+									catch (Exception ex)
+									{
+										JOptionPane.showMessageDialog(null,
+											    ex.getMessage(),
+											    "Edit Error",
+											    JOptionPane.ERROR_MESSAGE);
+									}
 								}
 							}
 						});
+						
 						
 						//DELETE function
 						recipebuttons.get(2).addActionListener(g -> 
@@ -564,8 +566,8 @@ public class ServerWindow extends JFrame implements UpdateListener
 								recipeScroll, buttonPanel
 							};
 						
-						int option = JOptionPane.showConfirmDialog(null, message, "Recipe of dish " + 
-						dish.getName() + ":", JOptionPane.OK_CANCEL_OPTION);
+						JOptionPane.showMessageDialog(null, message, "Recipe of dish " + 
+						dish.getName() + ":", JOptionPane.PLAIN_MESSAGE);
 					});
 					
 					Object[] message = {
